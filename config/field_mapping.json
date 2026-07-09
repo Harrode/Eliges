@@ -1,0 +1,77 @@
+{
+  "description": "LLM输出字段 → ES索引字段 映射配置",
+  "version": "1.1",
+
+  "field_mapping": {
+    "diagnoses": {
+      "es_fields": ["diagnosis^3", "chief_complaint^2", "history_present^2", "discharge_summary"],
+      "query_type": "multi_match",
+      "description": "诊断名称，搜索多个字段"
+    },
+    "age_min": {
+      "es_field": "age",
+      "query_type": "range_gte",
+      "description": "最小年龄"
+    },
+    "age_max": {
+      "es_field": "age",
+      "query_type": "range_lte",
+      "description": "最大年龄"
+    },
+    "gender": {
+      "es_field": "gender",
+      "query_type": "term",
+      "value_mapping": {"male": "男", "female": "女"},
+      "description": "性别"
+    },
+    "lab_tests": {
+      "es_path": "lab_results",
+      "es_name_field": "lab_results.name",
+      "es_value_field": "lab_results.value",
+      "query_type": "nested",
+      "op_mapping": {"<": "lt", "<=": "lte", ">": "gt", ">=": "gte"},
+      "description": "实验室检查条件"
+    },
+    "procedures": {
+      "es_field": "procedure_notes",
+      "query_type": "match",
+      "description": "手术/操作"
+    },
+    "medications": {
+      "es_field": "medications",
+      "query_type": "match",
+      "description": "药物"
+    },
+    "symptoms": {
+      "es_fields": ["chief_complaint", "history_present"],
+      "query_type": "multi_match",
+      "description": "症状"
+    },
+    "time_conditions": {
+      "query_type": "time_filter",
+      "description": "时间相关条件",
+      "fields": {
+        "admission_date": "入院日期",
+        "discharge_date": "出院日期"
+      },
+      "operators": {
+        "within": "在时间范围内",
+        "before": "在某时间之前",
+        "after": "在某时间之后",
+        "recent": "最近N个月"
+      }
+    }
+  },
+
+  "llm_prompt_hints": {
+    "diagnoses": "诊断名称列表，如 ['糖尿病', '高血压']",
+    "age_min": "最小年龄整数，如 30",
+    "age_max": "最大年龄整数，如 60",
+    "gender": "性别: male 或 female",
+    "lab_tests": "检验条件列表，每项包含 test, op(<,>,<=,>=), value",
+    "procedures": "手术/操作名称列表",
+    "medications": "药物名称列表",
+    "symptoms": "症状列表",
+    "time_conditions": "时间条件列表，每项包含 field(字段), operator(within/before/after/recent), value(时间值或月数)"
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "version": "1.0",
+  "min_supported_version": "1.0",
+  "description": "受控语义视图层：对外暴露逻辑查询能力，隐藏底层 ES 字段结构。",
+  "default_view": "patient_eligibility_view",
+  "views": {
+    "patient_eligibility_view": {
+      "description": "患者纳排检索视图",
+      "default_index": "n2c2_patients",
+      "allowed_indices": [
+        "n2c2_patients",
+        "mimic_patients",
+        "emr_records",
+        "n2c2_large",
+        "n2c2_50",
+        "n2c2_track1_eval",
+        "trialgpt_patients",
+        "test_import_2025",
+        "emr_cardiometabolic",
+        "emr_oncology",
+        "emr_respiratory",
+        "emr_nephrology",
+        "emr_neuropsychiatric"
+      ],
+      "max_size": 50,
+      "timeout": "3s",
+      "allowed_query_types": [
+        "multi_match",
+        "must_not_multi_match",
+        "range_gte",
+        "range_lte",
+        "term",
+        "match",
+        "must_not_match",
+        "nested_range",
+        "must_not_nested_range",
+        "time_filter"
+      ],
+      "exposed_fields": {
+        "diagnoses": {
+          "label": "诊断/疾病",
+          "query_type": "multi_match",
+          "es_fields": [
+            "diagnosis^3",
+            "chief_complaint^2",
+            "history_present^2",
+            "discharge_summary"
+          ],
+          "fuzziness": "AUTO"
+        },
+        "diagnoses_excluded": {
+          "label": "排除诊断",
+          "query_type": "must_not_multi_match",
+          "es_fields": [
+            "diagnosis",
+            "chief_complaint",
+            "history_present",
+            "discharge_summary"
+          ]
+        },
+        "conditions_excluded": {
+          "label": "排除病史/状态",
+          "query_type": "must_not_multi_match",
+          "es_fields": [
+            "diagnosis",
+            "chief_complaint",
+            "history_present",
+            "past_history",
+            "discharge_summary"
+          ]
+        },
+        "symptoms": {
+          "label": "症状/主诉",
+          "query_type": "multi_match",
+          "es_fields": [
+            "chief_complaint^2",
+            "history_present"
+          ]
+        },
+        "age_min": {
+          "label": "最小年龄",
+          "query_type": "range_gte",
+          "es_field": "age"
+        },
+        "age_max": {
+          "label": "最大年龄",
+          "query_type": "range_lte",
+          "es_field": "age"
+        },
+        "gender": {
+          "label": "性别",
+          "query_type": "term",
+          "es_field": "gender",
+          "value_mapping": {
+            "male": "男",
+            "female": "女"
+          }
+        },
+        "department": {
+          "label": "科室",
+          "query_type": "term",
+          "es_field": "department.keyword",
+          "fallback_es_field": "department"
+        },
+        "medications": {
+          "label": "用药",
+          "query_type": "match",
+          "es_field": "medications"
+        },
+        "medications_excluded": {
+          "label": "排除用药",
+          "query_type": "must_not_match",
+          "es_field": "medications"
+        },
+        "procedures": {
+          "label": "手术/操作/治疗",
+          "query_type": "match",
+          "es_field": "procedure_notes"
+        },
+        "lab_tests": {
+          "label": "检验指标",
+          "query_type": "nested_range",
+          "nested_path": "lab_results",
+          "name_field": "lab_results.name",
+          "value_field": "lab_results.value",
+          "op_mapping": {
+            "<": "lt",
+            "<=": "lte",
+            ">": "gt",
+            ">=": "gte"
+          },
+          "aliases": {
+            "糖化血红蛋白": [
+              "HbA1c",
+              "糖化血红蛋白",
+              "Hemoglobin A1c"
+            ],
+            "空腹血糖": [
+              "Glucose",
+              "空腹血糖",
+              "血糖",
+              "FPG"
+            ],
+            "血糖": [
+              "Glucose",
+              "空腹血糖",
+              "血糖",
+              "FPG"
+            ],
+            "eGFR": [
+              "eGFR"
+            ],
+            "BMI": [
+              "BMI"
+            ],
+            "肌酐": [
+              "Creatinine",
+              "肌酐",
+              "creatinine"
+            ],
+            "creatinine": [
+              "Creatinine",
+              "肌酐",
+              "creatinine"
+            ],
+            "hemoglobin": [
+              "Hemoglobin",
+              "血红蛋白",
+              "hemoglobin",
+              "Hgb"
+            ],
+            "血红蛋白": [
+              "Hemoglobin",
+              "血红蛋白",
+              "hemoglobin",
+              "Hgb"
+            ],
+            "wbc": [
+              "WBC",
+              "白细胞",
+              "wbc"
+            ],
+            "白细胞": [
+              "WBC",
+              "白细胞",
+              "wbc"
+            ],
+            "platelet": [
+              "Platelet",
+              "血小板",
+              "platelet"
+            ],
+            "血小板": [
+              "Platelet",
+              "血小板",
+              "platelet"
+            ]
+          }
+        },
+        "lab_tests_excluded": {
+          "label": "排除检验指标",
+          "query_type": "must_not_nested_range",
+          "nested_path": "lab_results",
+          "name_field": "lab_results.name",
+          "value_field": "lab_results.value",
+          "op_mapping": {
+            "<": "lt",
+            "<=": "lte",
+            ">": "gt",
+            ">=": "gte"
+          }
+        },
+        "time_conditions": {
+          "label": "入出院时间",
+          "query_type": "time_filter",
+          "allowed_date_fields": [
+            "admission_date",
+            "discharge_date"
+          ],
+          "default_date_field": "admission_date"
+        }
+      },
+      "fallback_full_text": {
+        "query_type": "multi_match",
+        "es_fields": [
+          "diagnosis^2",
+          "chief_complaint^2",
+          "history_present",
+          "discharge_summary",
+          "medications",
+          "procedure_notes"
+        ],
+        "fuzziness": "AUTO"
+      },
+      "highlight_fields": [
+        "diagnosis",
+        "chief_complaint",
+        "history_present",
+        "discharge_summary"
+      ]
+    }
+  }
+}

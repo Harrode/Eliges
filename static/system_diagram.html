@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统模块图 - 临床纳排检索系统</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+.header { text-align: center; margin-bottom: 20px; }
+.header h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 4px; }
+.header p { color: #666; font-size: 13px; }
+.io-box { width: 85%; max-width: 1200px; margin: 0 auto; }
+.input-box { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 20px; border-radius: 10px; text-align: center; font-size: 14px; }
+.output-box { background: linear-gradient(135deg, #43e97b, #38f9d7); color: #1a1a2e; padding: 12px 20px; border-radius: 10px; text-align: center; font-size: 14px; }
+.arrow { text-align: center; font-size: 22px; color: #667eea; padding: 6px 0; }
+.layers-container { display: flex; gap: 8px; width: 85%; max-width: 1200px; margin: 0 auto; }
+.layer { flex: 1; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; }
+.layer-header { padding: 10px 12px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+.layer-num { background: #667eea; color: white; width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+.layer-title { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+.layer-subtitle { font-size: 10px; color: #666; }
+.section { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+.section:last-child { border-bottom: none; }
+.section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; padding: 1px 6px; border-radius: 3px; display: inline-block; }
+.section-title.func { background: #eff6ff; color: #3b82f6; }
+.section-title.challenge { background: #fef2f2; color: #ef4444; }
+.section-title.solution { background: #f0fdf4; color: #22c55e; }
+.section ul { list-style: none; padding: 0; }
+.section li { font-size: 11px; line-height: 1.5; padding-left: 14px; position: relative; }
+.section li::before { content: ''; position: absolute; left: 0; top: 5px; width: 5px; height: 5px; border-radius: 50%; }
+.section.challenge li::before { background: #ef4444; }
+.section.solution li::before { background: #22c55e; }
+.loop-back { background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 8px; padding: 6px 12px; margin: 8px auto; width: fit-content; font-size: 11px; color: #92400e; }
+.data-flow { background: white; border-radius: 10px; padding: 14px; margin: 15px auto; width: 85%; max-width: 1200px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.data-flow h3 { font-size: 13px; margin-bottom: 8px; color: #1a1a2e; }
+.flow-steps { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; font-size: 11px; }
+.flow-step { background: #f0f2f5; padding: 3px 8px; border-radius: 5px; }
+.flow-arrow { color: #667eea; font-weight: 700; }
+.summary-table { background: white; border-radius: 10px; padding: 14px; margin: 15px auto; width: 85%; max-width: 1200px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.summary-table h3 { font-size: 13px; margin-bottom: 8px; color: #1a1a2e; }
+.summary-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.summary-table th { background: #f8fafc; padding: 6px 8px; text-align: left; border-bottom: 2px solid #e5e7eb; font-weight: 600; }
+.summary-table td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
+.summary-table tr:hover { background: #f8fafc; }
+.tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 600; }
+.tag-l1 { background: #eff6ff; color: #3b82f6; }
+.tag-l2 { background: #faf5ff; color: #8b5cf6; }
+.tag-l3 { background: #f0fdf4; color: #22c55e; }
+.tag-l4 { background: #fffbeb; color: #f59e0b; }
+.tag-l5 { background: #fdf2f8; color: #ec4899; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>临床纳排智能检索系统 — 模块架构图</h1>
+  <p>横向布局：Layer 1-5 → 难点 → 解决方案</p>
+</div>
+
+<!-- 输入 -->
+<div class="io-box">
+  <div class="input-box">
+    <b>用户查询</b>："纳入2型糖尿病患者，eGFR&lt;60，排除使用胰岛素的患者"
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 横向五层 -->
+<div class="layers-container">
+  <!-- Layer 1 -->
+  <div class="layer">
+    <div class="layer-header">
+      <div class="layer-num">L1</div>
+      <div class="layer-title">LLM NLU</div>
+      <div class="layer-subtitle">自然语言理解</div>
+    </div>
+    <div class="section">
+      <div class="section-title func">功能</div>
+      <ul>
+        <li>解析纳入/排除条件</li>
+        <li>提取诊断、药物、检验值</li>
+        <li>识别性别、年龄、时间</li>
+      </ul>
+    </div>
+    <div class="section challenge">
+      <div class="section-title challenge">难点</div>
+      <ul>
+        <li>inclusion/exclusion 易混</li>
+        <li>逻辑结构识别</li>
+        <li>检验值格式多样</li>
+      </ul>
+    </div>
+    <div class="section solution">
+      <div class="section-title solution">解决方案</div>
+      <ul>
+        <li>LLM 模板填充</li>
+        <li>后处理标准化</li>
+        <li>排除词上下文检测</li>
+        <li>检验值标准化</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Layer 2 -->
+  <div class="layer">
+    <div class="layer-header">
+      <div class="layer-num">L2</div>
+      <div class="layer-title">检索构建</div>
+      <div class="layer-subtitle">条件→查询</div>
+    </div>
+    <div class="section">
+      <div class="section-title func">功能</div>
+      <ul>
+        <li>字段映射</li>
+        <li>查询类型选择</li>
+        <li>两阶段检索策略</li>
+      </ul>
+    </div>
+    <div class="section challenge">
+      <div class="section-title challenge">难点</div>
+      <ul>
+        <li>LLM 直接查库不可控</li>
+        <li>字段名不同</li>
+        <li>嵌套查询构建</li>
+      </ul>
+    </div>
+    <div class="section solution">
+      <div class="section-title solution">解决方案</div>
+      <ul>
+        <li>Semantic View 安全层</li>
+        <li>字段映射配置</li>
+        <li>Two-stage 检索</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Layer 3 -->
+  <div class="layer">
+    <div class="layer-header">
+      <div class="layer-num">L3</div>
+      <div class="layer-title">全文检索</div>
+      <div class="layer-subtitle">ES 检索引擎</div>
+    </div>
+    <div class="section">
+      <div class="section-title func">功能</div>
+      <ul>
+        <li>全文检索 + 模糊匹配</li>
+        <li>检验值区间过滤</li>
+        <li>日期范围过滤</li>
+      </ul>
+    </div>
+    <div class="section challenge">
+      <div class="section-title challenge">难点</div>
+      <ul>
+        <li>中英文混合检索</li>
+        <li>检验值区间匹配</li>
+        <li>时间条件过滤</li>
+      </ul>
+    </div>
+    <div class="section solution">
+      <div class="section-title solution">解决方案</div>
+      <ul>
+        <li>ICU 分词器</li>
+        <li>fuzziness: AUTO</li>
+        <li>嵌套查询 + 值范围</li>
+        <li>日期范围过滤</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Layer 4 -->
+  <div class="layer">
+    <div class="layer-header">
+      <div class="layer-num">L4</div>
+      <div class="layer-title">规则过滤</div>
+      <div class="layer-subtitle">硬约束校验</div>
+    </div>
+    <div class="section">
+      <div class="section-title func">功能</div>
+      <ul>
+        <li>诊断匹配验证</li>
+        <li>检验值精确比较</li>
+        <li>排除条件验证</li>
+        <li>命中依据生成</li>
+      </ul>
+    </div>
+    <div class="section challenge">
+      <div class="section-title challenge">难点</div>
+      <ul>
+        <li>同义词（肝病↔肝硬化）</li>
+        <li>操作符兼容</li>
+        <li>否定处理</li>
+        <li>结果不足处理</li>
+      </ul>
+    </div>
+    <div class="section solution">
+      <div class="section-title solution">解决方案</div>
+      <ul>
+        <li>同义词映射</li>
+        <li>操作符兼容匹配</li>
+        <li>否定上下文检测</li>
+        <li>Loop-back 放宽重试</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Layer 5 -->
+  <div class="layer">
+    <div class="layer-header">
+      <div class="layer-num">L5</div>
+      <div class="layer-title">LLM 解读</div>
+      <div class="layer-subtitle">分析与问答</div>
+    </div>
+    <div class="section">
+      <div class="section-title func">功能</div>
+      <ul>
+        <li>生成分析报告</li>
+        <li>交互问答</li>
+        <li>结果解释</li>
+      </ul>
+    </div>
+    <div class="section challenge">
+      <div class="section-title challenge">难点</div>
+      <ul>
+        <li>长文本理解</li>
+        <li>多轮对话</li>
+        <li>结果准确性</li>
+      </ul>
+    </div>
+    <div class="section solution">
+      <div class="section-title solution">解决方案</div>
+      <ul>
+        <li>上下文注入</li>
+        <li>Markdown 格式化</li>
+        <li>基于检索结果问答</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Loop-back -->
+<div class="loop-back">⟲ Loop-back：结果不足时放宽条件，反馈给 L1 重新解析</div>
+
+<div class="arrow">▼</div>
+
+<!-- 输出 -->
+<div class="io-box">
+  <div class="output-box">
+    <b>检索结果</b>：患者列表 + 匹配依据 + 分析报告
+  </div>
+</div>
+
+<!-- 数据流 -->
+<div class="data-flow">
+  <h3>数据流</h3>
+  <div class="flow-steps">
+    <span class="flow-step">用户查询</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">L1 LLM NLU</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">条件JSON</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">L2 检索构建</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">ES查询</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">L3 全文检索</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">候选患者</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">L4 规则过滤</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">精确结果</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">L5 LLM解读</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">返回用户</span>
+  </div>
+</div>
+
+<!-- 汇总表 -->
+<div class="summary-table">
+  <h3>各层核心挑战与解决方案</h3>
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>核心挑战</th><th>解决方案</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="tag tag-l1">L1 NLU</span></td><td>纳排语义复杂，inclusion/exclusion 易混</td><td>LLM 模板填充 + 后处理标准化</td></tr>
+      <tr><td><span class="tag tag-l1">L1 NLU</span></td><td>检验值格式多样（区间、比较、ULN倍数）</td><td>_normalize_lab_tests 标准化</td></tr>
+      <tr><td><span class="tag tag-l1">L1 NLU</span></td><td>性别/年龄格式不一致</td><td>归一化处理</td></tr>
+      <tr><td><span class="tag tag-l2">L2 构建</span></td><td>LLM 直接查库不可控</td><td>Semantic View 安全层</td></tr>
+      <tr><td><span class="tag tag-l2">L2 构建</span></td><td>不同数据源字段名不同</td><td>config/field_mapping.json</td></tr>
+      <tr><td><span class="tag tag-l2">L2 构建</span></td><td>宽召回 vs 精确查询</td><td>Two-stage 检索策略</td></tr>
+      <tr><td><span class="tag tag-l3">L3 检索</span></td><td>中英文混合检索</td><td>ICU 分词器 + fuzziness: AUTO</td></tr>
+      <tr><td><span class="tag tag-l3">L3 检索</span></td><td>检验值区间匹配</td><td>嵌套查询 + 值范围过滤</td></tr>
+      <tr><td><span class="tag tag-l3">L3 检索</span></td><td>时间条件过滤</td><td>日期范围过滤</td></tr>
+      <tr><td><span class="tag tag-l4">L4 过滤</span></td><td>诊断同义词（肝病史↔肝硬化）</td><td>_exclusion_synonyms 映射</td></tr>
+      <tr><td><span class="tag tag-l4">L4 过滤</span></td><td>操作符兼容（>= vs >）</td><td>_op_compatible 匹配</td></tr>
+      <tr><td><span class="tag tag-l4">L4 过滤</span></td><td>否定处理</td><td>上下文检测</td></tr>
+      <tr><td><span class="tag tag-l4">L4 过滤</span></td><td>结果不足</td><td>Loop-back 放宽重试</td></tr>
+      <tr><td><span class="tag tag-l5">L5 解读</span></td><td>长文本理解</td><td>上下文注入（检索结果+条件）</td></tr>
+      <tr><td><span class="tag tag-l5">L5 解读</span></td><td>结果解释准确性</td><td>Markdown 格式化 + 问答</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

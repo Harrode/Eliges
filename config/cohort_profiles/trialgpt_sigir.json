@@ -1,0 +1,28 @@
+{
+  "profile_id": "trialgpt_sigir",
+  "display_name": "TrialGPT SIGIR (generic + trial metadata)",
+  "description": "Cross-dataset profile: zero criterion overrides; trial context passed in query text.",
+  "index_patterns": ["trialgpt_*"],
+  "criteria": [],
+  "parse_pipeline": {
+    "merge_chia_fallback": true,
+    "normalize_lab_tests": true,
+    "extract_lab_ranges_from_query": true,
+    "strip_bad_medication_tokens": true
+  },
+  "routing": {
+    "default_l4": true,
+    "judge_when_fields": [
+      "inclusion_logic",
+      "composite_min_count",
+      "temporal_event",
+      "inclusion_terms",
+      "required_medications"
+    ],
+    "judge_never_lab_only": true
+  },
+  "judge": {
+    "enabled": true,
+    "batch_size": 5
+  }
+}

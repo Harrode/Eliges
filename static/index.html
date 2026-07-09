@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinical Trial Eligibility Screening System</title>
+<script src="/static/vue.global.prod.js"></script>
+<script src="/static/chart.min.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+<style>[v-cloak]{display:none}</style>
+</head>
+<body>
+<div id="app" v-cloak>
+<div class="header">
+  <h1>Clinical Trial Eligibility Screening System</h1>
+  <span class="badge">Demo</span>
+  <span class="subtitle">NL → NLU → Retrieval → Rule Filter → LLM Interpretation</span>
+</div>
+<div class="container">
+<div class="left">
+<div class="panel">
+<h2>Enter Eligibility Criteria</h2>
+<textarea v-model="query" rows="3" placeholder="Enter eligibility criteria in natural language, e.g., hepatitis patients older than 30" @keydown.ctrl.enter="doSearch"></textarea>
+<div class="row" style="margin-top:10px">
+  <button class="primary" :disabled="searching" @click="doSearch">
+    <span v-if="searching" class="spinner"></span> {{ searching ? 'Searching...' : 'Search Patients' }}
+  </button>
+  <button :disabled="!currentData" @click="doAnalyze">Generate Analysis Report</button>
+  <span class="note">{{ timingInfo }}</span>
+</div>
+<div class="row" style="margin-top:8px;gap:8px;align-items:center">
+  <label style="font-size:13px;color:#6b7280">Dataset:</label>
+  <select v-model="index" @change="changeIndex" style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+    <optgroup label="Synthetic cohorts (PHI-free)">
+      <option value="emr_cardiometabolic">Cardiometabolic clinic (500)</option>
+      <option value="emr_oncology">Medical oncology (500)</option>
+      <option value="emr_respiratory">Pulmonary medicine (500)</option>
+      <option value="emr_nephrology">Nephrology (500)</option>
+      <option value="emr_neuropsychiatric">Neurology &amp; behavioral health (500)</option>
+    </optgroup>
+  </select>
+  <label style="font-size:13px;color:#6b7280">Model:</label>
+  <select v-model="model" @change="changeModel" style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+    <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+    <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+    <option value="rule-only">rule-only (no LLM)</option>
+  </select>
+  <label style="font-size:13px;color:#6b7280">Retrieval:</label>
+  <select v-model="retrieval" @change="changeRetrieval" style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+    <option value="auto">auto</option>
+    <option value="es">elasticsearch</option>
+    <option value="memory">memory</option>
+  </select>
+  <span :style="{fontSize:'12px',color: esOk ? '#10b981' : '#ef4444'}">{{ esText }}</span>
+  <span class="note" style="margin-left:4px" :title="'cohort_profile=' + profileId">Profile: {{ profileName }}</span>
+</div>
+<div class="chips">
+  <span class="chip" v-for="c in chips" :key="c.label" @click="query = c.q">{{ c.label }}</span>
+</div>
+</div>
+
+<div class="panel" v-if="versions.length">
+<h2>Retrieval Version Comparison</h2>
+<div class="version-bar">
+  <div class="ver-chip" v-for="(v, i) in versions" :key="v.id"
+       :class="{active: selectedVersions.includes(v.id)}" @click="toggleVersion(v.id)">
+    <span class="dot" :style="{background: i === 0 ? '#1d4ed8' : '#b45309'}"></span>
+    <span>V{{ i + 1 }} {{ shortQuery(v.query) }} ({{ v.total }})</span>
+  </div>
+  <button v-if="versions.length >= 2" style="font-size:12px;padding:4px 10px" @click="compareVersions">Compare</button>
+</div>
+<div class="note">Click a version to view; select two versions, then click "Compare".</div>
+</div>
+
+<!-- Results / comparison area -->
+<div v-if="compareView" v-html="compareView"></div>
+<div v-else-if="errorMsg" class="panel"><div class="bad">{{ errorMsg }}</div></div>
+<div v-else-if="currentData && (!currentData.results || !currentData.results.length)" class="panel"><div class="note">No matching patients found.</div></div>
+<div v-else-if="currentData && currentData.results && currentData.results.length">
+  <div class="panel">
+    <div class="section-title">Matching patients ({{ currentData.total }})</div>
+    <div class="card" v-for="(p, i) in currentData.results" :key="p.patient_id || p.id || i">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="name">{{ p.name || ('Patient' + (i + 1)) }}</div>
+        <div>
+          <span class="tag">{{ p.gender }}</span>
+          <span class="tag">{{ p.age }} y/o</span>
+          <span class="tag">{{ p.department || '' }}</span>
+          <span class="tag">Score {{ p.score }}</span>
+        </div>
+      </div>
+      <div class="meta">
+        <span>Admission: {{ p.admission_date || '-' }}</span>
+        <span>Discharge: {{ p.discharge_date || '-' }}</span>
+        <span>Facility: {{ p.hospital || '-' }}</span>
+      </div>
+      <div style="font-size:13px;margin-bottom:4px"><b>Diagnosis: </b><span v-html="diagHtml(p)"></span></div>
+      <div style="font-size:13px;margin-bottom:8px"><b>Chief complaint: </b><span v-html="chiefHtml(p)"></span></div>
+      <div v-if="histHtml(p)" style="font-size:13px;margin-bottom:8px"><b>History of present illness: </b><span v-html="histHtml(p)"></span></div>
+      <div class="evidence">
+        <h4>Match evidence</h4>
+        <ul><li v-for="(r, ri) in (p.hit_reason || [])" :key="ri">{{ r }}</li></ul>
+      </div>
+      <button class="btn-detail" @click="showPatientDetail(p.patient_id || p.id || '')">View details</button>
+    </div>
+  </div>
+</div>
+<div v-else class="panel"><div class="note">Enter eligibility criteria and click "Search Patients".</div></div>
+</div>
+
+<div class="right">
+<div class="panel">
+<h2>System Architecture (click a layer to view data)</h2>
+<div class="arch-row">
+  <div class="arch-btn" v-for="l in archLayers" :key="l.id"
+       :class="{active: currentLayer === l.id}" @click="showLayer(l.id)">
+    <b>{{ l.n }}</b><small>{{ l.t }}</small><br><small>{{ l.s }}</small>
+  </div>
+</div>
+<div class="note">The system uses a deterministic retrieval main pipeline plus LLM post-analysis in a layered design.</div>
+</div>
+
+<div v-html="layerDetailHtml"></div>
+
+<div class="layer-panel" v-if="currentLayer === 'nlu' && currentData">
+  <h3>Edit parsed conditions &amp; re-run</h3>
+  <div class="desc">Modify the JSON below and re-run retrieval with your edited conditions (Layer 1 is bypassed; the same SemanticViewBuilder whitelist validation still applies).</div>
+  <textarea v-model="editedConditions" rows="10" class="mono" spellcheck="false"
+            style="width:100%;margin-top:8px;font-size:12px;box-sizing:border-box"></textarea>
+  <div v-if="condError" class="bad" style="font-size:12px;margin-top:4px">{{ condError }}</div>
+  <div class="row" style="margin-top:8px">
+    <button class="primary" :disabled="rerunning" @click="rerunWithConditions">
+      <span v-if="rerunning" class="spinner"></span> {{ rerunning ? 'Re-running...' : 'Re-run with edited conditions' }}
+    </button>
+    <span class="note">Uses the same query text; only the conditions change.</span>
+  </div>
+</div>
+
+<div class="panel" v-show="showViz">
+<h2>Data Visualization</h2>
+<div class="chart-grid">
+  <div class="chart-box"><div class="chart-title">Age distribution</div><canvas ref="chartAge"></canvas></div>
+  <div class="chart-box"><div class="chart-title">Gender distribution</div><canvas ref="chartGender"></canvas></div>
+  <div class="chart-box"><div class="chart-title">Department distribution</div><canvas ref="chartDept"></canvas></div>
+  <div class="chart-box"><div class="chart-title">Match score</div><canvas ref="chartScore"></canvas></div>
+</div>
+</div>
+
+<div class="panel">
+<h2>LLM Analysis Report</h2>
+<div v-if="analyzing" class="row"><span class="spinner"></span><span class="note">Generating LLM analysis report...</span></div>
+<div v-else-if="analysisHtml" class="report-content" v-html="analysisHtml"></div>
+<div v-else class="note">After searching, click "Generate Analysis Report".</div>
+</div>
+
+<div class="panel">
+<h2>Interactive Q&A</h2>
+<div ref="chatMessages" style="max-height:300px;overflow:auto;margin-bottom:10px">
+  <div class="msg" :class="m.role" v-for="(m, mi) in chatMessages" :key="mi">
+    <template v-if="m.raw">{{ m.text }}</template>
+    <span v-else v-html="m.html"></span>
+  </div>
+  <div class="msg ai" v-if="chatLoading"><span class="row"><span class="spinner"></span><span class="note">Thinking...</span></span></div>
+</div>
+<div class="row">
+  <input v-model="chatInput" placeholder="Type a question and press Enter" @keydown.enter="doChat">
+  <button class="primary" @click="doChat">Send</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Patient details modal -->
+<div class="modal" v-if="modalOpen" style="display:flex" @click.self="modalOpen = false">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>{{ modalName }}</h2>
+      <span class="modal-close" @click="modalOpen = false">&times;</span>
+    </div>
+    <div class="modal-body" v-html="modalHtml"></div>
+  </div>
+</div>
+</div>
+<script src="/static/app.js?v=vue-2"></script>
+</body>
+</html>

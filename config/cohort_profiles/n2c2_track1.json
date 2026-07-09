@@ -1,0 +1,192 @@
+{
+  "profile_id": "n2c2_track1",
+  "display_name": "n2c2 2018 Track 1 Reference Pack",
+  "description": "Official 13 eligibility criteria with documented parse overrides for reproducibility.",
+  "index_patterns": ["n2c2_*", "*n2c2*"],
+  "parse_pipeline": {
+    "merge_chia_fallback": true,
+    "normalize_lab_tests": true,
+    "extract_lab_ranges_from_query": true,
+    "strip_bad_medication_tokens": true
+  },
+  "routing": {
+    "default_l4": true,
+    "judge_never_lab_only": true
+  },
+  "judge": {
+    "enabled": true,
+    "batch_size": 5
+  },
+  "criteria": [
+    {
+      "id": "DRUG-ABUSE",
+      "canonical_text": "Drug abuse, current or past.",
+      "match_substrings": ["drug abuse"],
+      "parse_overrides": {
+        "diagnoses_any": [
+          "drug abuse", "substance abuse", "cocaine", "heroin", "ivdu",
+          "marijuana abuse", "narcotic abuse", "opiate abuse", "opioid abuse",
+          "polysubstance", "intravenous drug"
+        ]
+      },
+      "route": {"judge": true}
+    },
+    {
+      "id": "ALCOHOL-ABUSE",
+      "canonical_text": "Current alcohol use over weekly recommended limits.",
+      "match_substrings": ["alcohol use over weekly"],
+      "parse_overrides": {
+        "inclusion_terms": [
+          "alcohol abuse", "etoh abuse", "alcohol dependence", "alcoholism",
+          "heavy alcohol", "drinks heavily", "daily alcohol", "six pack",
+          "beer", "beers per day", "drinks per day"
+        ],
+        "inclusion_negative_terms": [
+          "social alcohol", "occasional alcohol", "rare alcohol",
+          "denies alcohol", "no alcohol", "does not drink"
+        ]
+      },
+      "route": {"judge": true}
+    },
+    {
+      "id": "ENGLISH",
+      "canonical_text": "Patient must speak English.",
+      "match_substrings": ["speak english", "must speak english"],
+      "replace": true,
+      "parse_overrides": {"inclusion_logic": "english_speaker"},
+      "route": {"judge": false}
+    },
+    {
+      "id": "MAKES-DECISIONS",
+      "canonical_text": "Patient must make their own medical decisions.",
+      "match_substrings": ["make their own medical decisions"],
+      "replace": true,
+      "parse_overrides": {"inclusion_logic": "decision_capacity"},
+      "route": {"judge": false}
+    },
+    {
+      "id": "ABDOMINAL",
+      "canonical_text": "History of intra-abdominal surgery, small or large intestine resection, or small bowel obstruction.",
+      "match_substrings": ["intra-abdominal surgery", "small bowel obstruction"],
+      "parse_overrides": {
+        "diagnoses_any": [
+          "abdominal surgery", "intra-abdominal surgery", "laparotomy",
+          "appendectomy", "cholecystectomy", "colectomy", "colon resection",
+          "bowel resection", "small bowel resection", "large bowel resection",
+          "gastric bypass", "hysterectomy", "exploratory laparotomy", "ileostomy", "colostomy"
+        ],
+        "inclusion_terms": [
+          "abdominal surgery", "intra-abdominal surgery", "laparotomy",
+          "appendectomy", "cholecystectomy", "colectomy", "colon resection",
+          "bowel resection", "small bowel resection", "bowel obstruction"
+        ]
+      },
+      "route": {"judge": true}
+    },
+    {
+      "id": "MAJOR-DIABETES",
+      "canonical_text": "Major diabetes-related complication such as nephropathy, retinopathy, neuropathy, or peripheral vascular disease.",
+      "match_substrings": ["diabetes-related complication", "major diabetes"],
+      "parse_overrides": {
+        "diagnoses_any": [
+          "amputation", "kidney damage", "skin conditions", "retinopathy",
+          "nephropathy", "neuropathy", "renal failure", "kidney failure",
+          "diabetic foot", "foot ulcer", "skin ulcer", "diabetic ulcer",
+          "esrd", "dialysis", "peripheral vascular disease"
+        ]
+      },
+      "route": {"judge": true}
+    },
+    {
+      "id": "ADVANCED-CAD",
+      "canonical_text": "Advanced cardiovascular disease (CAD): use of 2 or more of the following: nitrates, beta-blockers, calcium channel blockers, statins, aspirin, or history of myocardial infarction, angina, ischemia.",
+      "match_substrings": ["two or more", "advanced cardiovascular"],
+      "parse_overrides": {
+        "composite_min_count": 2,
+        "evidence_groups": [
+          {
+            "id": "cad_medications",
+            "terms": ["aspirin", "asa", "plavix", "clopidogrel", "nitroglycerin", "atenolol", "metoprolol", "lipitor", "atorvastatin", "pravastatin", "simvastatin", "zocor", "beta blocker", "statin"],
+            "min_hits": 2,
+            "mode": "med_count"
+          },
+          {"id": "myocardial_infarction", "terms": ["myocardial infarction", "history of mi", "s/p mi", " mi ", "acute mi"], "mode": "positive"},
+          {"id": "angina", "terms": ["angina", "chest pain"], "mode": "positive"},
+          {"id": "ischemia", "terms": ["ischemia", "ischemic", "positive stress test", "cabg", "ptca", "pci", "stent"], "mode": "positive"}
+        ]
+      },
+      "route": {"judge": false}
+    },
+    {
+      "id": "MI-6MOS",
+      "canonical_text": "Myocardial infarction in the past 6 months.",
+      "match_substrings": ["myocardial infarction", "6 month"],
+      "parse_overrides": {
+        "temporal_event": {
+          "event_terms": ["myocardial infarction", "acute mi", "s/p mi", "stemi", "nstemi"],
+          "window_months": 6
+        },
+        "diagnoses_any": ["myocardial infarction", "acute mi", "s/p mi"]
+      },
+      "route": {"judge": true}
+    },
+    {
+      "id": "KETO-1YR",
+      "canonical_text": "Diagnosis of ketoacidosis in the past year.",
+      "match_substrings": ["ketoacidosis"],
+      "parse_overrides": {
+        "temporal_event": {
+          "event_terms": ["ketoacidosis", "dka", "diabetic ketoacidosis"],
+          "window_years": 1
+        },
+        "diagnoses_any": ["ketoacidosis", "dka", "diabetic ketoacidosis"]
+      },
+      "route": {"judge": true}
+    },
+    {
+      "id": "DIETSUPP-2MOS",
+      "canonical_text": "Taken a dietary supplement, excluding vitamin D, in the past 2 months.",
+      "match_substrings": ["dietary supplement"],
+      "parse_overrides": {
+        "temporal_event": {
+          "event_terms": ["dietary supplement", "herbal", "ginkgo", "ginseng", "multivitamin", "coq10", "vitamin e", "vitamin c"],
+          "window_months": 2,
+          "exclude_vitamin_d_only": true
+        },
+        "diagnoses_any": ["dietary supplement", "herbal", "multivitamin", "supplement"]
+      },
+      "route": {"judge": false}
+    },
+    {
+      "id": "ASP-FOR-MI",
+      "canonical_text": "Use of aspirin to prevent myocardial infarction.",
+      "match_substrings": ["aspirin"],
+      "parse_overrides": {
+        "required_medications": ["aspirin", "asa", "enteric coated aspirin", "ec aspirin"],
+        "diagnoses_any": [
+          "myocardial infarction", "coronary artery disease", "cad",
+          "ischemia", "history of mi", "s/p mi", "stent", "cabg", "pci"
+        ]
+      },
+      "route": {"judge": false}
+    },
+    {
+      "id": "HBA1C",
+      "canonical_text": "Any hemoglobin A1c or HbA1c value between 6.5% and 9.5%.",
+      "match_substrings": ["hba1c", "hemoglobin a1c", "a1c value between"],
+      "parse_overrides": {
+        "lab_tests": [{"test": "HbA1c", "op": "between", "value_min": 6.5, "value_max": 9.5}]
+      },
+      "route": {"judge": false}
+    },
+    {
+      "id": "CREATININE",
+      "canonical_text": "Serum creatinine greater than the upper limit of normal.",
+      "match_substrings": ["creatinine greater", "upper limit of normal"],
+      "parse_overrides": {
+        "lab_tests": [{"test": "Creatinine", "op": ">", "value": 1.3}]
+      },
+      "route": {"judge": false}
+    }
+  ]
+}
