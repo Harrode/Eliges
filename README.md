@@ -70,49 +70,10 @@ Environment variables (see `.env.example`):
 | `CHIA_DATA_ROOT` | not needed | Chia brat corpus |
 | `N2C2_TRACK2_DATA_ROOT` | not needed | optional Track 2 scripts |
 
-## Reproducing Paper Numbers
 
-Obtain [n2c2 2018 Track 1](https://portal.dbmi.hms.harvard.edu/projects/n2c2-nlp/) under its DUA, then:
-
-```bash
-export N2C2_DATA_ROOT=/path/to/n2c2_2018_track1_cohort_selection
-python tests/ablation_n2c2.py              # Table 2 ablation (peak F1)
-python tests/eval_hybrid.py --profile generic
-python tests/eval_hybrid.py --profile n2c2_track1
-```
-
-See **`demo/baselines.md`** for headline metrics and **`REPO_UPLOAD.md`** for the full file manifest.
-
-Chia / Track 2 evaluations additionally require `CHIA_DATA_ROOT` and `N2C2_TRACK2_DATA_ROOT` respectively.
-
-## Key Paths
-
-```
-backend.py                      # FastAPI + 5-layer search pipeline
-app/pipeline_hybrid.py          # Hybrid eval path
-app/cohort_profile.py           # Profile loader (generic default)
-config/                         # Semantic view + field mapping + profiles
-data/synthetic/                 # PHI-free demo cohorts (included)
-tests/ablation_n2c2.py          # Table 2
-tests/eval_hybrid.py            # Table 5 operating points
-demo/                           # Paper drafts + system docs
-```
-
-## Documentation
-
-| Doc | Purpose |
-|-----|---------|
-| [REPO_UPLOAD.md](REPO_UPLOAD.md) | GitHub release / anonymous upload checklist |
-| [demo/README.md](demo/README.md) | Paper document index |
-| [demo/paper_draft.md](demo/paper_draft.md) | EMNLP submission draft |
-| [demo/baselines.md](demo/baselines.md) | Baseline definitions & headline F1 |
-| [doc/experiments.md](doc/experiments.md) | Full experiment setup |
-| [demo/system_documentation.md](demo/system_documentation.md) | System reference |
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
-## Citation
 
-If you use this system in research, please cite the EMNLP 2026 System Demonstrations paper (bibtex TBD upon acceptance).
