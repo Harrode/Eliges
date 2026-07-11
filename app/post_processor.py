@@ -301,24 +301,24 @@ class CodeGenerator:
 
     def generate_post_process_code(self, user_request: str, data_schema: Dict) -> str:
         """根据用户需求生成后处理代码"""
-        prompt = f"""你是一位 Python 数据分析专家。请根据用户需求生成后处理代码。
+        prompt = f"""You are a Python data-analysis expert. Generate post-processing code based on the user request.
 
-数据结构：
+Data schema:
 {json.dumps(data_schema, ensure_ascii=False, indent=2)}
 
-用户需求：
+User request:
 {user_request}
 
-请生成一个名为 post_process 的函数，接收 results 列表作为参数，返回处理后的数据。
+Generate a function named post_process that accepts a results list and returns the processed data.
 
-要求：
-1. 代码必须是安全的，不能执行危险操作
-2. 使用 pandas 进行数据分析
-3. 返回 JSON 可序列化的数据
-4. 函数签名：def post_process(results):
-5. 代码必须是完整的、可执行的
+Requirements:
+1. Code must be safe and must not perform dangerous operations
+2. Use pandas for data analysis
+3. Return JSON-serializable data
+4. Function signature: def post_process(results):
+5. Code must be complete and executable
 
-代码：
+Code:
 ```python
 """
         try:
@@ -326,7 +326,11 @@ class CodeGenerator:
                 model=os.getenv('LLM_MODEL', 'deepseek-v4-flash'),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                max_tokens=2000
+                max_tokens=2000,
+                extra_body={
+                    "enable_thinking": False,
+                    "chat_template_kwargs": {"enable_thinking": False},
+                },
             )
             code = response.choices[0].message.content
             return self._extract_code(code)

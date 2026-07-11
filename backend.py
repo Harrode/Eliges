@@ -122,6 +122,10 @@ if ENHANCED_MODE:
 
 # -- LLM Clients --
 llm_client = OpenAI(base_url=LLM_BASE, api_key=LLM_API_KEY, timeout=90.0, max_retries=3) if LLM_API_KEY else None
+NO_THINKING_EXTRA_BODY = {
+    "enable_thinking": False,
+    "chat_template_kwargs": {"enable_thinking": False},
+}
 
 # -- Runtime State --
 current_model = LLM_MODEL
@@ -870,8 +874,7 @@ def llm_parse_query(
                     ],
                     temperature=0,
                     max_tokens=3000,
-                    extra_body={"enable_thinking": False,
-                                "chat_template_kwargs": {"enable_thinking": False}}
+                    extra_body=NO_THINKING_EXTRA_BODY,
                 )
                 break
             except Exception as call_err:
@@ -1942,7 +1945,7 @@ def rule_filter(hits: list, conds: dict) -> list:
 def llm_analyze(query: str, patients: list) -> str:
     """Layer 5: LLM analysis report generation"""
     if not llm_client or current_model == 'rule-only':
-        return "LLM 服务未配置，无法生成分析报告。请设置 LLM_API_KEY 环境变量。"
+        return "LLM service is not configured. Set the LLM_API_KEY environment variable to generate reports."
 
     # 获取患者的详细病历数据
     patient_details = []
@@ -1983,91 +1986,96 @@ def llm_analyze(query: str, patients: list) -> str:
         if full_patient:
             # 构建详细的患者信息
             detail = f"""
-患者{i+1}（{full_patient.get('name')}）:
-- 基本信息: {full_patient.get('age')}岁, {full_patient.get('gender')}, {full_patient.get('department')}
-- 诊断: {full_patient.get('diagnosis')}
-- 主诉: {full_patient.get('chief_complaint')}
-- 现病史: {full_patient.get('history_present', '')[:200]}...
-- 既往史: {full_patient.get('past_history', '')}
-- 用药: {full_patient.get('medications', '')}
-- 入院日期: {full_patient.get('admission_date', '-')}
-- 出院日期: {full_patient.get('discharge_date', '-')}
-- 检验结果: {', '.join([f"{l['name']}={l['value']}{l['unit']}" for l in full_patient.get('lab_results', [])])}
-- 生命体征: 血压{full_patient.get('vital_signs', {}).get('bp_systolic', '-')}/{full_patient.get('vital_signs', {}).get('bp_diastolic', '-')}, 心率{full_patient.get('vital_signs', {}).get('heart_rate', '-')}
-- 出院小结: {full_patient.get('discharge_summary', '')[:150]}...
+Patient {i+1} ({full_patient.get('name')}):
+- Demographics: age {full_patient.get('age')}, {full_patient.get('gender')}, {full_patient.get('department')}
+- Diagnosis: {full_patient.get('diagnosis')}
+- Chief complaint: {full_patient.get('chief_complaint')}
+- Present illness: {full_patient.get('history_present', '')[:200]}...
+- Past history: {full_patient.get('past_history', '')}
+- Medications: {full_patient.get('medications', '')}
+- Admission date: {full_patient.get('admission_date', '-')}
+- Discharge date: {full_patient.get('discharge_date', '-')}
+- Lab results: {', '.join([f"{l['name']}={l['value']}{l['unit']}" for l in full_patient.get('lab_results', [])])}
+- Vital signs: BP {full_patient.get('vital_signs', {}).get('bp_systolic', '-')}/{full_patient.get('vital_signs', {}).get('bp_diastolic', '-')}, HR {full_patient.get('vital_signs', {}).get('heart_rate', '-')}
+- Discharge summary: {full_patient.get('discharge_summary', '')[:150]}...
 """
             patient_details.append(detail)
         else:
-            patient_details.append(f"\n患者{i+1}: {p.get('name')}, {p.get('age')}岁, {p.get('gender')}, 诊断: {p.get('diagnosis')}")
+            patient_details.append(
+                f"\nPatient {i+1}: {p.get('name')}, age {p.get('age')}, "
+                f"{p.get('gender')}, diagnosis: {p.get('diagnosis')}"
+            )
 
     patient_summary = "\n".join(patient_details)
 
-    prompt = f"""你是一位临床研究助手。基于以下纳排检索结果和详细病历数据，生成一份专业的分析报告。
+    prompt = f"""You are a clinical research assistant. Based on the eligibility-search results and detailed patient records below, generate a professional analysis report.
 
-查询条件：{query}
-命中患者数：{len(patients)}
+Query criterion: {query}
+Number of matched patients: {len(patients)}
 
-患者详细病历：
+Patient records:
 {patient_summary}
 
-请生成分析报告，使用以下格式：
+Produce the report using the following structure:
 
-## 患者画像
-- 年龄分布：...
-- 性别分布：...
-- 科室分布：...
+## Patient profile
+- Age distribution: ...
+- Sex distribution: ...
+- Department distribution: ...
 
-## 推荐患者
-1. 患者姓名 - 推荐理由（引用具体病历内容）
+## Recommended patients
+1. Patient name - recommendation reason (cite specific chart content)
 2. ...
 
-## 核查结论
-基于病历数据的核实结果：
-1. 患者X：[已核实的结论] - [引用病历中的具体数据作为证据]
-2. 患者Y：[已核实的结论] - [引用病历中的具体数据作为证据]
+## Verification conclusions
+Record-based verification results:
+1. Patient X: [verified conclusion] - [cite specific chart data as evidence]
+2. Patient Y: [verified conclusion] - [cite specific chart data as evidence]
 
-## 风险评估
-- 数据质量评估：...
-- 潜在混杂因素：...
-- 建议纳入/排除的患者：...
+## Risk assessment
+- Data quality assessment: ...
+- Potential confounders: ...
+- Suggested inclusion/exclusion decisions: ...
 
-请用简洁专业的中文回答，不要使用markdown加粗语法。核查结论部分必须基于病历数据给出明确结论，而不是模糊的建议。"""
+Answer concisely and professionally in English. Do not use markdown bold syntax. Verification conclusions must be based on chart data with explicit conclusions, not vague suggestions."""
 
     try:
         response = llm_client.chat.completions.create(
             model=current_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=3000
+            max_tokens=3000,
+            extra_body=NO_THINKING_EXTRA_BODY,
         )
         return _strip_thinking(response.choices[0].message.content or "")
     except Exception as e:
-        return f"LLM 分析失败: {str(e)}"
+        return f"LLM analysis failed: {str(e)}"
 
 def llm_chat(question: str, context: str) -> str:
     """Layer 5: Interactive QA"""
     if not llm_client or current_model == 'rule-only':
-        return "LLM 服务未配置，无法回答问题。请设置 LLM_API_KEY 环境变量。"
+        return "LLM service is not configured. Set the LLM_API_KEY environment variable to answer questions."
 
-    prompt = f"""你是一位临床研究助手。基于以下检索结果上下文，回答研究者的问题。
+    prompt = f"""You are a clinical research assistant. Answer the researcher's question using the eligibility-search context below.
 
-上下文：
+Context:
 {context}
 
-问题：{question}
+Question: {question}
 
-请用简洁专业的中文回答。如果上下文中没有相关信息，请说明。"""
+Answer concisely and professionally in English. If the context does not contain the requested information, state that explicitly."""
 
     try:
         response = llm_client.chat.completions.create(
             model=current_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=2500
+            max_tokens=2500,
+            extra_body=NO_THINKING_EXTRA_BODY,
         )
         return _strip_thinking(response.choices[0].message.content or "")
     except Exception as e:
-        return f"LLM 回答失败: {str(e)}"
+        return f"LLM answer failed: {str(e)}"
 
 # =============================================================================
 # API Endpoints
@@ -2294,22 +2302,24 @@ async def search(req: SearchRequest, request: Request):
             if 'diagnoses' in conds:
                 diag = h.get('diagnosis', h.get('source', {}).get('diagnosis', ''))
                 if not any(d.lower() in diag.lower() for d in conds['diagnoses']):
-                    rejected_reasons.append(f"{name}: 诊断不匹配(期望{conds['diagnoses']})")
+                    rejected_reasons.append(
+                        f"{name}: diagnosis mismatch (expected {conds['diagnoses']})"
+                    )
             if 'lab_tests' in conds:
-                rejected_reasons.append(f"{name}: 可能检验值不满足条件")
+                rejected_reasons.append(f"{name}: lab values may not meet the criterion")
 
-        # 构建 feedback 字符串
+        # Build feedback string
         feedback = ""
         if rejected_reasons:
             feedback = f"""
-## 上一轮解析反馈（第{loop_count}次尝试）
-上一轮解析的结果命中患者过少，以下是部分患者的拒绝原因：
+## Previous-parse feedback (attempt {loop_count})
+The previous parse returned too few patients. Sample rejection reasons:
 {chr(10).join(rejected_reasons[:3])}
 
-请根据反馈调整解析策略：
-- 如果诊断条件过严，可以考虑放宽
-- 如果检验值条件导致没有结果，可以考虑移除
-- 保留排除条件不变"""
+Adjust the parse strategy based on this feedback:
+- If diagnosis constraints are too strict, consider relaxing them
+- If lab-value constraints yield no results, consider removing them
+- Keep exclusion conditions unchanged"""
 
         # Relax: remove lab_tests if present
         # 注意：不排除条件（medications_excluded, diagnoses_excluded, conditions_excluded）
